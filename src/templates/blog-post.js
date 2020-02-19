@@ -5,13 +5,18 @@ import Bio from "../components/bio"
 import Layout from "../components/layout"
 import SEO from "../components/seo"
 import { rhythm, scale } from "../utils/typography"
-import { remarkForm } from "gatsby-tinacms-remark"
+import { remarkForm, inlineRemarkForm } from "gatsby-tinacms-remark"
+import { TinaField, Wysiwyg } from "tinacms"
+import { get } from 'lodash'
 
 class BlogPostTemplate extends React.Component {
   render() {
     const post = this.props.data.markdownRemark
     const siteTitle = this.props.data.site.siteMetadata.title
     const { previous, next } = this.props.pageContext
+    console.log(this.props);
+    const isEditing = this.props.isEditing;
+    const setIsEditing = this.props.setIsEditing;
 
     return (
       <Layout location={this.props.location} title={siteTitle}>
@@ -29,6 +34,7 @@ class BlogPostTemplate extends React.Component {
             >
               {post.frontmatter.title}
             </h1>
+            <img src={post.frontmatter.thumbnail}></img>
             <p
               style={{
                 ...scale(-1 / 5),
@@ -39,7 +45,18 @@ class BlogPostTemplate extends React.Component {
               {post.frontmatter.date}
             </p>
           </header>
-          <section dangerouslySetInnerHTML={{ __html: post.html }} />
+          {/* <section dangerouslySetInnerHTML={{ __html: post.html }} /> */}
+          <>
+            <TinaField name="rawMarkdownBody" Component={Wysiwyg}>
+              <section
+                class="content"
+                dangerouslySetInnerHTML={{ __html: post.html }}
+              ></section>
+            </TinaField>
+          </>
+          <button onClick={() => setIsEditing(p => !p)}>
+    {isEditing ? 'Preview' : 'Edit'}
+  </button>
           <hr
             style={{
               marginBottom: rhythm(1),
@@ -117,6 +134,24 @@ const BlogPostForm = {
       label: "Textarea",
     },
     { name: "rawMarkdownBody", component: "markdown", label: "Body" },
+    {
+      name: "rawFrontmatter.thumbnail",
+      label: "Thumbnail",
+      component: "image",
+      parse: filename => `/content/images/${filename}`,
+
+      previewSrc: (formValues, { input }) => {
+        const path = input.name.replace("rawFrontmatter", "frontmatter")
+        const gastbyImageNode = get(formValues, path)
+        if (!gastbyImageNode) return ""
+        //specific to gatsby-image
+        return gastbyImageNode.childImageSharp.fluid.src
+      },
+
+      uploadDir: () => {
+        return "/content/images/"
+      }
+    }
   ],
 }
 
@@ -124,7 +159,7 @@ const BlogPostForm = {
  * The `remarkForm` higher order component wraps the `BlogPostTemplate`
  * and generates a new form from the data in the `markdownRemark` query.
  */
-export default remarkForm(BlogPostTemplate, BlogPostForm)
+export default inlineRemarkForm(BlogPostTemplate, BlogPostForm)
 
 export const pageQuery = graphql`
   query BlogPostBySlug($slug: String!) {
